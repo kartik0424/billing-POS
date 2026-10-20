@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background with rounded squircles -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGradient)" />
+
+  <!-- Inner glowing circle -->
+  <circle cx="256" cy="256" r="180" fill="#ffffff" fill-opacity="0.08" />
+
+  <!-- POS Terminal & Receipt Vector Icon -->
+  <g transform="translate(106, 96)" filter="url(#shadow)">
+    <!-- Main POS Terminal Body -->
+    <rect x="25" y="40" width="250" height="280" rx="36" fill="#ffffff" />
+    
+    <!-- Thermal Receipt Paper Coming Out from Top Slot -->
+    <path d="M65 40 V-15 Q95 0 125 -15 Q155 0 185 -15 Q215 0 235 -15 V40 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="4" />
+    <line x1="90" y1="5" x2="210" y2="5" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" />
+    <line x1="90" y1="20" x2="170" y2="20" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" />
+
+    <!-- Terminal Screen Display -->
+    <rect x="50" y="70" width="200" height="110" rx="18" fill="#0f172a" />
+    <!-- Screen Accent & Amount Text -->
+    <circle cx="75" cy="92" r="7" fill="#10b981" />
+    <text x="100" y="98" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="20">QuickPOS</text>
+    <text x="75" y="148" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="34">₹ 0.00</text>
+
+    <!-- Keypad Dots / Buttons -->
+    <circle cx="85" cy="215" r="14" fill="#e2e8f0" />
+    <circle cx="150" cy="215" r="14" fill="#e2e8f0" />
+    <circle cx="215" cy="215" r="14" fill="#e2e8f0" />
+
+    <circle cx="85" cy="260" r="14" fill="#e2e8f0" />
+    <circle cx="150" cy="260" r="14" fill="#e2e8f0" />
+    <circle cx="215" cy="260" r="14" fill="#10b981" /> <!-- Green Enter Key -->
+  </g>
+</svg>

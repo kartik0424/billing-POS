@@ -1,0 +1,247 @@
+/**
+ * POS Progressive Web App - Mobile-First Stylesheet
+ * Primary Accent: Indigo Blue (#2563eb)
+ * Neutral: Slate Grey
+ */
+
+:root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-subtle: #eff6ff;
+    --primary-border: #bfdbfe;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #06b6d4;
+    --surface: #ffffff;
+    --background: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --bottom-nav-height: 62px;
+}
+
+/* Global resets & typography */
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* App Main Container: Provide bottom clearance on mobile for bottom navigation */
+.app-main {
+    padding-bottom: calc(var(--bottom-nav-height) + 1.5rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (min-width: 768px) {
+    .app-main {
+        padding-bottom: 2rem !important;
+    }
+}
+
+/* Topbar Branding */
+.app-topbar {
+    height: 60px;
+    background: #ffffff;
+    z-index: 1020;
+}
+.brand-icon {
+    width: 36px;
+    height: 36px;
+}
+.brand-text {
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+/* Mobile-First Touch Targets: minimum 44px for accessibility */
+.btn, .form-control, .form-select, .input-group-text {
+    min-height: 44px;
+}
+
+.btn-touch {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+/* Modern Card Styling */
+.card {
+    background-color: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-clickable {
+    cursor: pointer;
+}
+.card-clickable:active {
+    transform: scale(0.98);
+}
+
+/* Shadow utilities */
+.shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Bottom Navigation Bar on Mobile */
+.mobile-bottom-nav {
+    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 1030;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--border-color);
+}
+
+.bottom-nav-item {
+    flex: 1;
+    min-height: 48px;
+    height: 100%;
+    padding: 6px 0;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    border-radius: var(--radius-sm);
+    user-select: none;
+}
+
+.bottom-nav-item .icon-wrap {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bottom-nav-item .label {
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.bottom-nav-item.active {
+    color: var(--primary) !important;
+}
+
+.bottom-nav-item.active .icon-wrap i {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+.bottom-nav-item:active {
+    background-color: var(--primary-subtle);
+}
+
+/* Desktop Navigation Hover */
+.nav-desktop .nav-link {
+    transition: all 0.15s ease;
+}
+.nav-desktop .nav-link:hover {
+    background-color: #f1f5f9;
+}
+.nav-desktop .nav-link.active {
+    background-color: var(--primary-subtle);
+    color: var(--primary);
+}
+
+/* Currency & Number formatting */
+.amount-text {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* Modal Customizations */
+.modal-content {
+    border-radius: var(--radius-lg);
+}
+
+/* Custom Scrollbar for sleek UI */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Horizontal Chip Scroller */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Responsive 3-Column Billing Grid */
+@media (min-width: 992px) {
+    .billing-tab-content > .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+}
+
+/* Mobile Cart Quick Bar */
+.mobile-cart-bar {
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    z-index: 1025;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-color);
+}
+
+/* Quantity Stepper Buttons */
+.btn-qty {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    border-radius: 6px;
+}
+
+/* Spin animation for refresh buttons */
+.spin-animation {
+    display: inline-block;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Button variants */
+.btn-white {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.btn-white:hover {
+    background-color: #f8fafc;
+    color: #0f172a;
+}
+.btn-transparent {
+    background-color: transparent;
+    border: none;
+}
+
