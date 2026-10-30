@@ -12,6 +12,11 @@
 (function () {
     'use strict';
 
+    // Prevent duplicate initialization if loaded via multiple script tags
+    if (window.PRINTER && typeof window.PRINTER.openModal === 'function') {
+        return;
+    }
+
     // BLE Service UUIDs commonly used by 58mm/80mm Bluetooth Thermal Printers
     const PRINTER_SERVICES = [
         '000018f0-0000-1000-8000-00805f9b34fb', // Standard BLE thermal printer service
@@ -438,10 +443,18 @@
         return localStorage.getItem(STORAGE_KEY_METHOD) || 'browser';
     }
 
-    function setPrintMethod(method) {
+    function setPrintMethod(method, silent = false) {
         if (['browser', 'bluetooth', 'wifi'].includes(method)) {
             localStorage.setItem(STORAGE_KEY_METHOD, method);
             updateUIStatus();
+            if (!silent && typeof toast === 'function') {
+                const labels = {
+                    'browser': 'Browser Print (Direct USB / PDF Dialog)',
+                    'bluetooth': 'Bluetooth Thermal Printer (BLE)',
+                    'wifi': 'WiFi / LAN Network Printer (Socket 9100)'
+                };
+                toast(`Active printer set to ${labels[method] || method}`, 'success', 2500);
+            }
         }
     }
 
@@ -514,13 +527,16 @@
                 }
             } catch (err) {
                 console.error('[WiFi Print Failed]', err);
-                toast('Network printer error: ' + (err.message || 'Connection failed'), 'danger');
+                toast('Network printer error: ' + (err.message || 'Connection failed'), 'danger', 4000);
 
+                const hostDisplay = window.APP?.printerIp ? `${window.APP.printerIp}:${window.APP?.printerPort || 9100}` : 'configured IP';
                 const fallback = await confirmDialog({
                     title: 'Use Browser Print?',
-                    message: 'Could not connect to the network printer. Would you like to use browser print preview instead?'
+                    message: `Could not connect to network printer at ${hostDisplay}. Would you like to switch default printer to Browser Print preview?`
                 });
                 if (fallback) {
+                    setPrintMethod('browser', true);
+                    toast('Default printer switched to Browser Print so future prints will succeed immediately.', 'info', 4000);
                     return browserPrintFallback(bill, settings);
                 }
                 return false;
@@ -534,26 +550,269 @@
     }
 
     /**
-     * Browser Thermal Print Fallback using window.print() and print.css
+     * Browser Thermal Print Fallback using an isolated iframe or window.print()
      */
     function browserPrintFallback(bill, settings = {}) {
         try {
-            let receiptContainer = document.getElementById('printableThermalReceipt');
-            let tempWrapper = null;
+            const paperWidth = String(settings.paper_width || window.APP?.paperWidth || '58');
+            const receiptMaxWidth = (paperWidth === '80') ? '380px' : '310px';
 
-            if (!receiptContainer && typeof renderReceiptHTML === 'function') {
-                tempWrapper = document.createElement('div');
-                tempWrapper.id = 'tempPrintWrapper';
-                tempWrapper.innerHTML = renderReceiptHTML(bill, settings);
-                document.body.appendChild(tempWrapper);
-                receiptContainer = document.getElementById('printableThermalReceipt');
+            // Priority: use the already rendered preview in DOM if present, or render from bill
+            let receiptHtml = '';
+            const existing = document.getElementById('printableThermalReceipt');
+            if (existing && existing.innerHTML.trim().length > 0) {
+                receiptHtml = existing.outerHTML;
+            } else if (typeof renderReceiptHTML === 'function') {
+                receiptHtml = renderReceiptHTML(bill, settings);
             }
 
-            window.print();
-
-            if (tempWrapper) {
-                setTimeout(() => tempWrapper.remove(), 1200);
+            if (!receiptHtml) {
+                window.print();
+                return false;
             }
+
+            // Create or replace an invisible print iframe to avoid modal overflow & fixed container bugs
+            let iframe = document.getElementById('posReceiptPrintIframe');
+            if (iframe) {
+                iframe.remove();
+            }
+            iframe = document.createElement('iframe');
+            iframe.id = 'posReceiptPrintIframe';
+            iframe.setAttribute('style', 'position:fixed;top:0;left:0;width:1px;height:1px;border:none;opacity:0.01;pointer-events:none;z-index:-9999;');
+            document.body.appendChild(iframe);
+
+            const iframeWin = iframe.contentWindow;
+            const iframeDoc = iframeWin.document;
+            const billTitle = (bill && bill.bill_no) ? `Receipt_${bill.bill_no}` : 'Receipt';
+
+            // Complete, self-contained CSS ensuring 100% exact match with the on-screen modal preview
+            const receiptCss = `
+                @page {
+                    margin: 0;
+                    size: auto;
+                }
+                * {
+                    box-sizing: border-box !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                html, body {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    color: #111827 !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    min-height: 0 !important;
+                    overflow: visible !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: flex-start !important;
+                    font-family: 'Consolas', 'Courier Prime', 'Roboto Mono', 'SF Mono', 'Courier New', monospace !important;
+                }
+                #printableThermalReceipt,
+                .pos-receipt {
+                    display: block !important;
+                    margin: 0 auto !important;
+                    padding: 14px 12px !important;
+                    width: 100% !important;
+                    max-width: ${receiptMaxWidth} !important;
+                    background: #ffffff !important;
+                    color: #111827 !important;
+                    font-family: 'Consolas', 'Courier Prime', 'Roboto Mono', 'SF Mono', 'Courier New', monospace !important;
+                    text-align: left !important;
+                    line-height: 1.35 !important;
+                    box-sizing: border-box !important;
+                    box-shadow: none !important;
+                    border: none !important;
+                }
+                .receipt-80mm {
+                    max-width: 380px !important;
+                }
+                .receipt-header {
+                    text-align: center !important;
+                    margin-bottom: 8px !important;
+                }
+                .receipt-title {
+                    font-weight: 800 !important;
+                    font-size: 16px !important;
+                    letter-spacing: 1.5px !important;
+                    text-transform: uppercase !important;
+                    color: #000000 !important;
+                    line-height: 1.25 !important;
+                    margin-bottom: 4px !important;
+                    text-align: center !important;
+                }
+                .receipt-sub {
+                    font-size: 11px !important;
+                    line-height: 1.35 !important;
+                    color: #1f2937 !important;
+                    text-align: center !important;
+                }
+                .receipt-divider {
+                    border-top: 1.5px dashed #000000 !important;
+                    margin: 8px 0 !important;
+                    width: 100% !important;
+                    display: block !important;
+                }
+                .receipt-meta {
+                    font-size: 11.5px !important;
+                    line-height: 1.45 !important;
+                    color: #111827 !important;
+                    margin: 8px 0 !important;
+                }
+                .d-flex {
+                    display: flex !important;
+                }
+                .justify-content-between {
+                    justify-content: space-between !important;
+                }
+                .align-items-center {
+                    align-items: center !important;
+                }
+                .text-center {
+                    text-align: center !important;
+                }
+                .text-start {
+                    text-align: left !important;
+                }
+                .text-end {
+                    text-align: right !important;
+                }
+                .text-break {
+                    word-break: break-word !important;
+                }
+                .text-uppercase {
+                    text-transform: uppercase !important;
+                }
+                .text-muted {
+                    color: #6b7280 !important;
+                }
+                .fw-bold {
+                    font-weight: 700 !important;
+                }
+                .fw-semibold {
+                    font-weight: 600 !important;
+                }
+                .w-100 {
+                    width: 100% !important;
+                }
+                .py-0 { padding-top: 0 !important; padding-bottom: 0 !important; }
+                .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
+                .my-1 { margin-top: 4px !important; margin-bottom: 4px !important; }
+                .my-2 { margin-top: 8px !important; margin-bottom: 8px !important; }
+                .mb-1 { margin-bottom: 4px !important; }
+                .mb-2 { margin-bottom: 8px !important; }
+                .pb-1 { padding-bottom: 4px !important; }
+                
+                .receipt-table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    font-size: 11.5px !important;
+                    line-height: 1.35 !important;
+                    margin: 8px 0 !important;
+                }
+                .receipt-table-header {
+                    border-bottom: 1.5px solid #000000 !important;
+                }
+                .receipt-table th {
+                    font-weight: 700 !important;
+                    color: #000000 !important;
+                    padding: 4px 0 !important;
+                }
+                .receipt-table td {
+                    padding: 3px 0 !important;
+                    color: #111827 !important;
+                    vertical-align: top !important;
+                }
+                .receipt-totals {
+                    font-size: 12px !important;
+                    line-height: 1.45 !important;
+                }
+                .receipt-discount-line {
+                    color: #dc2626 !important;
+                }
+                .receipt-grand-total {
+                    border-top: 2px solid #000000 !important;
+                    border-bottom: 2px solid #000000 !important;
+                    font-weight: 800 !important;
+                    font-size: 15px !important;
+                    letter-spacing: 0.5px !important;
+                    color: #000000 !important;
+                    padding: 5px 0 !important;
+                    margin: 6px 0 !important;
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                }
+                .receipt-advance-line,
+                .receipt-advance-line * {
+                    color: #059669 !important;
+                    font-weight: 600 !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .receipt-balance-line,
+                .receipt-balance-line * {
+                    color: #dc2626 !important;
+                    font-weight: 800 !important;
+                    font-size: 14px !important;
+                    letter-spacing: 0.5px !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .receipt-payment-line {
+                    font-size: 11.5px !important;
+                    color: #111827 !important;
+                }
+                .receipt-footer {
+                    text-align: center !important;
+                    margin-top: 8px !important;
+                }
+                .receipt-footer-msg {
+                    font-size: 12px !important;
+                    font-weight: 600 !important;
+                    color: #111827 !important;
+                    line-height: 1.35 !important;
+                    margin-bottom: 4px !important;
+                }
+                .receipt-footer-sub {
+                    font-size: 10px !important;
+                    color: #6b7280 !important;
+                    letter-spacing: 0.5px !important;
+                }
+                tr, .receipt-header, .receipt-meta, .receipt-totals, .receipt-footer {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+            `;
+
+            iframeDoc.open();
+            iframeDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>${billTitle}</title>
+    <style>${receiptCss}</style>
+</head>
+<body>
+    ${receiptHtml}
+</body>
+</html>`);
+            iframeDoc.close();
+
+            // Give browser a moment to lay out before calling print
+            setTimeout(() => {
+                try {
+                    iframeWin.focus();
+                    iframeWin.print();
+                } catch (printErr) {
+                    console.warn('[Iframe Print failed, falling back to window.print()]', printErr);
+                    window.print();
+                }
+            }, 150);
+
             return true;
         } catch (err) {
             console.error('[Browser Print Error]', err);
@@ -611,7 +870,13 @@
      * Dynamically inject the Printer Configuration Modal into the DOM if absent
      */
     function ensureModalInDOM() {
-        if (document.getElementById('printerConfigModal')) return;
+        if (document.getElementById('printerConfigModal')) {
+            bindModalEvents();
+            return;
+        }
+
+        const currentIp = window.APP?.printerIp || '';
+        const currentPort = window.APP?.printerPort || '9100';
 
         const modalHTML = `
             <div class="modal fade" id="printerConfigModal" tabindex="-1" aria-labelledby="printerConfigModalTitle" aria-hidden="true">
@@ -632,7 +897,7 @@
                                     <div class="card h-100 p-2 text-center border rounded-3 printer-method-option" data-method="browser" style="cursor: pointer;">
                                         <i class="bi bi-window fs-4 text-primary mb-1"></i>
                                         <div class="fw-semibold small">Browser</div>
-                                        <div class="text-muted" style="font-size: 0.68rem;">window.print</div>
+                                        <div class="text-muted" style="font-size: 0.68rem;">USB / PDF</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
@@ -670,24 +935,59 @@
                                 </div>
                             </div>
 
-                            <!-- Panel 2: WiFi Setup Note -->
+                            <!-- Panel 2: WiFi Setup Note & Configuration -->
                             <div id="printerPanelWifi" class="card bg-slate-50 border rounded-3 p-3 mb-3 d-none">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="small fw-semibold text-dark">Network Thermal Printer</span>
-                                    <span class="badge bg-info-subtle text-info small rounded-pill">LAN Socket</span>
+                                    <span class="badge bg-info-subtle text-info small rounded-pill">LAN Socket 9100</span>
                                 </div>
                                 <div class="small text-muted mb-2" style="font-size: 0.75rem;">
-                                    Prints over local WiFi to port 9100. Printer IP can be configured in <strong>Settings</strong>.
+                                    Direct RAW ESC/POS socket connection to network thermal printer.
                                 </div>
-                                <a href="settings.php" class="btn btn-light btn-sm border rounded-3 small py-1 px-2 d-inline-flex align-items-center gap-1 text-decoration-none">
-                                    <i class="bi bi-gear"></i> Configure IP & Port in Settings
-                                </a>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-8">
+                                        <label for="modalPrinterIp" class="form-label small fw-semibold text-secondary mb-1">Printer IP Address</label>
+                                        <input type="text" class="form-control form-control-sm font-monospace" id="modalPrinterIp" placeholder="e.g. 192.168.1.100" value="${currentIp}">
+                                    </div>
+                                    <div class="col-4">
+                                        <label for="modalPrinterPort" class="form-label small fw-semibold text-secondary mb-1">Port</label>
+                                        <input type="number" class="form-control form-control-sm font-monospace" id="modalPrinterPort" placeholder="9100" value="${currentPort}">
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 mb-2">
+                                    <button type="button" class="btn btn-primary btn-sm rounded-3 flex-grow-1" id="btnModalSavePrinterIp">
+                                        <i class="bi bi-check2 me-1"></i> Save IP
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-3" id="btnModalTestWifiLink">
+                                        <i class="bi bi-plug me-1"></i> Test Link
+                                    </button>
+                                </div>
+                                <div class="small text-muted" id="modalWifiStatusHint" style="font-size: 0.72rem;">
+                                    <i class="bi bi-info-circle me-1"></i> If no network printer is reachable on your LAN, select <strong>Browser</strong> above for USB & desktop printing.
+                                </div>
                             </div>
 
                             <!-- Panel 3: Browser Fallback Note -->
                             <div id="printerPanelBrowser" class="card bg-slate-50 border rounded-3 p-3 mb-3">
+                                <div class="d-flex align-items-center gap-2 text-success fw-semibold small mb-1">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>Browser Print (Recommended)</span>
+                                </div>
                                 <div class="small text-muted" style="font-size: 0.78rem;">
-                                    Uses your operating system's standard print dialog. Supports any installed USB, network, or virtual PDF printer.
+                                    Uses your operating system's standard print dialog. Supports any installed USB thermal printer, virtual PDF, or network office printer without socket timeouts.
+                                </div>
+                            </div>
+
+                            <!-- Receipt Paper Roll Width -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Receipt Paper Roll Width</label>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1 rounded-3 py-2 btn-modal-paper-width" data-width="58">
+                                        58mm (2-inch roll)
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1 rounded-3 py-2 btn-modal-paper-width" data-width="80">
+                                        80mm (3-inch roll)
+                                    </button>
                                 </div>
                             </div>
 
@@ -713,7 +1013,11 @@
 
     function bindModalEvents() {
         const modalEl = document.getElementById('printerConfigModal');
-        if (!modalEl) return;
+        if (!modalEl || modalEl.dataset.eventsBound) return;
+        modalEl.dataset.eventsBound = 'true';
+
+        // Refresh UI status whenever modal opens
+        modalEl.addEventListener('show.bs.modal', updateUIStatus);
 
         // Method card click listeners
         modalEl.querySelectorAll('.printer-method-option').forEach(card => {
@@ -741,6 +1045,92 @@
             btnBleDisconnect.addEventListener('click', disconnectBluetooth);
         }
 
+        // Paper Width button listeners
+        modalEl.querySelectorAll('.btn-modal-paper-width').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const width = btn.getAttribute('data-width');
+                if (window.APP) window.APP.paperWidth = width;
+                updateUIStatus();
+                try {
+                    await api('api/settings.php?action=update_printer', {
+                        method: 'POST',
+                        body: {
+                            paper_width: width,
+                            printer_ip: window.APP?.printerIp || '',
+                            printer_port: window.APP?.printerPort || '9100'
+                        }
+                    });
+                    toast(`Paper width set to ${width}mm`, 'success', 2000);
+                } catch (e) {
+                    // Silent
+                }
+            });
+        });
+
+        // Save WiFi IP & Port listener
+        const btnSaveIp = document.getElementById('btnModalSavePrinterIp');
+        if (btnSaveIp) {
+            btnSaveIp.addEventListener('click', async () => {
+                const ipInput = document.getElementById('modalPrinterIp');
+                const portInput = document.getElementById('modalPrinterPort');
+                const ip = ipInput?.value.trim() || '';
+                const port = portInput?.value.trim() || '9100';
+
+                try {
+                    btnSaveIp.disabled = true;
+                    btnSaveIp.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+                    const res = await api('api/settings.php?action=update_printer', {
+                        method: 'POST',
+                        body: {
+                            printer_ip: ip,
+                            printer_port: port,
+                            paper_width: window.APP?.paperWidth || '58'
+                        }
+                    });
+                    if (res && res.success) {
+                        if (window.APP) {
+                            window.APP.printerIp = ip;
+                            window.APP.printerPort = port;
+                        }
+                        toast('Network printer settings saved successfully!', 'success');
+                    } else {
+                        throw new Error(res?.message || 'Failed to save');
+                    }
+                } catch (err) {
+                    toast(err.message || 'Error saving printer IP', 'danger');
+                } finally {
+                    btnSaveIp.disabled = false;
+                    btnSaveIp.innerHTML = '<i class="bi bi-check2 me-1"></i> Save IP';
+                }
+            });
+        }
+
+        // Test WiFi Socket Connection listener
+        const btnTestWifi = document.getElementById('btnModalTestWifiLink');
+        if (btnTestWifi) {
+            btnTestWifi.addEventListener('click', async () => {
+                try {
+                    btnTestWifi.disabled = true;
+                    btnTestWifi.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing...';
+                    toast('Testing connection to network printer...', 'info', 2000);
+                    const res = await api('api/print_network.php', {
+                        method: 'POST',
+                        body: { test_print: true }
+                    });
+                    if (res && res.success) {
+                        toast('Printer responded and printed test ticket!', 'success', 3000);
+                    } else {
+                        throw new Error(res?.message || 'Could not connect');
+                    }
+                } catch (err) {
+                    toast(err.message || 'Network printer unreachable.', 'danger', 4000);
+                } finally {
+                    btnTestWifi.disabled = false;
+                    btnTestWifi.innerHTML = '<i class="bi bi-plug me-1"></i> Test Link';
+                }
+            });
+        }
+
         // Test Print
         const btnTest = document.getElementById('btnModalTestPrint');
         if (btnTest) {
@@ -755,6 +1145,7 @@
         const method = getPrintMethod();
         const isConnected = !!(bleDevice && bleDevice.gatt.connected && bleCharacteristic);
         const deviceName = bleDevice?.name || localStorage.getItem(STORAGE_KEY_BLE_NAME) || 'Thermal Printer';
+        const paperWidth = window.APP?.paperWidth || '58';
 
         // 1. Highlight active method option card
         document.querySelectorAll('.printer-method-option').forEach(card => {
@@ -772,7 +1163,15 @@
         if (panelWifi) panelWifi.classList.toggle('d-none', method !== 'wifi');
         if (panelBrowser) panelBrowser.classList.toggle('d-none', method !== 'browser');
 
-        // 3. Update BLE status badges and buttons
+        // 3. Highlight active paper width
+        document.querySelectorAll('.btn-modal-paper-width').forEach(btn => {
+            const isMatch = btn.getAttribute('data-width') === paperWidth;
+            btn.classList.toggle('btn-primary', isMatch);
+            btn.classList.toggle('text-white', isMatch);
+            btn.classList.toggle('btn-outline-secondary', !isMatch);
+        });
+
+        // 4. Update BLE status badges and buttons
         const bleBadge = document.getElementById('bleStatusBadge');
         const btnBleConnect = document.getElementById('btnBleConnect');
         const btnBleDisconnect = document.getElementById('btnBleDisconnect');
@@ -794,7 +1193,7 @@
             btnBleDisconnect.classList.toggle('d-none', !isConnected);
         }
 
-        // 4. Update any navbar / global status indicators (e.g. #printerStatusBadge)
+        // 5. Update any navbar / global status indicators (e.g. #printerStatusBadge)
         const globalBadges = document.querySelectorAll('.printer-status-badge');
         globalBadges.forEach(b => {
             if (method === 'bluetooth') {
@@ -808,6 +1207,20 @@
                 b.className = 'badge rounded-pill bg-secondary printer-status-badge';
             }
         });
+
+        // 6. Update topbar printer icon button tooltip
+        const navPrinterBtn = document.getElementById('btnHeaderPrinterModal');
+        if (navPrinterBtn) {
+            let label = 'Browser Print';
+            if (method === 'bluetooth') {
+                label = isConnected ? ('Bluetooth (' + deviceName + ')') : 'Bluetooth (Offline)';
+            } else if (method === 'wifi') {
+                const ip = window.APP?.printerIp || 'Configured';
+                label = 'WiFi Network Printer (' + ip + ')';
+            }
+            navPrinterBtn.title = 'Printer Setup • ' + label;
+            navPrinterBtn.setAttribute('aria-label', 'Printer Setup • ' + label);
+        }
     }
 
     /**
@@ -851,18 +1264,26 @@
         openModal
     };
 
-    // Auto-initialize when DOM is ready
-    document.addEventListener('DOMContentLoaded', () => {
+    function initPrinterModule() {
         ensureModalInDOM();
         updateUIStatus();
         tryAutoReconnect();
 
         // Delegate listener for any button with class .btn-open-printer-modal or id #btnOpenPrinterModal
         document.addEventListener('click', (e) => {
-            if (e.target.closest('#btnOpenPrinterModal') || e.target.closest('.btn-open-printer-modal')) {
+            const btn = e.target.closest('#btnOpenPrinterModal') || e.target.closest('.btn-open-printer-modal');
+            if (btn && !btn.hasAttribute('data-bs-toggle')) {
+                e.preventDefault();
                 openModal();
             }
         });
-    });
+    }
+
+    // Auto-initialize when DOM is ready or immediately if already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPrinterModule);
+    } else {
+        initPrinterModule();
+    }
 
 })();

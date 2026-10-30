@@ -44,19 +44,87 @@ body {
     }
 }
 
-/* Topbar Branding */
+/* Topbar Branding & Mobile Responsiveness */
 .app-topbar {
-    height: 60px;
+    min-height: 56px;
     background: #ffffff;
     z-index: 1020;
 }
+.app-topbar .navbar-brand {
+    min-width: 0;
+}
 .brand-icon {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+}
+@media (min-width: 576px) {
+    .app-topbar {
+        min-height: 60px;
+    }
+    .brand-icon {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
 }
 .brand-text {
     color: var(--text-main);
     letter-spacing: -0.02em;
+    max-width: 135px;
+}
+@media (min-width: 360px) {
+    .brand-text {
+        max-width: 160px;
+    }
+}
+@media (min-width: 420px) {
+    .brand-text {
+        max-width: 220px;
+    }
+}
+@media (min-width: 576px) {
+    .brand-text {
+        max-width: 320px;
+    }
+}
+@media (min-width: 768px) {
+    .brand-text {
+        max-width: none;
+    }
+}
+
+/* Reset button min-height for topbar controls */
+.app-topbar .btn {
+    min-height: unset;
+}
+
+/* Sleek Icon Button for Topbar Printer Selector */
+.nav-printer-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+    background-color: #f8fafc;
+    border-color: #e2e8f0 !important;
+    transition: all 0.2s ease;
+}
+@media (min-width: 576px) {
+    .nav-printer-btn {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+    }
+}
+.nav-printer-btn:hover, .nav-printer-btn:focus-visible {
+    background-color: #eff6ff;
+    border-color: #93c5fd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.15);
+}
+.nav-printer-btn:active {
+    transform: scale(0.93);
+    background-color: #dbeafe;
 }
 
 /* Mobile-First Touch Targets: minimum 44px for accessibility */

@@ -11,8 +11,11 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/db.php';
 
-// Strict Server-Side Role Enforcement: Admin Only
-require_role('admin');
+// Authentication required for both cashiers and admins
+require_login();
+
+$currentUser = current_user();
+$userRole = $currentUser['role'] ?? 'cashier';
 
 $db = Database::getConnection();
 $action = sanitize_text($_GET['action'] ?? 'get');
@@ -62,6 +65,9 @@ if ($action === 'get') {
 // Action: update (Update settings with server-side validation & CSRF check)
 // ============================================================================
 if ($action === 'update') {
+    // Strict Server-Side Role Enforcement: Admin Only for full store configuration
+    require_role('admin');
+
     // Only POST allowed for mutations
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         json_response(false, 'Method not allowed. Use POST.', null, 405);
@@ -179,5 +185,67 @@ if ($action === 'update') {
     }
 }
 
+// ============================================================================
+// Action: update_printer (Update hardware printer IP, port & paper width)
+// Accessible by both admin and cashier
+// ============================================================================
+if ($action === 'update_printer') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        json_response(false, 'Method not allowed. Use POST.', null, 405);
+    }
+
+    require_csrf();
+
+    $input = get_json_input();
+    if (empty($input)) {
+        $input = $_POST;
+    }
+
+    $printerIp = trim(sanitize_text($input['printer_ip'] ?? ''));
+    if (!empty($printerIp)) {
+        if (!filter_var($printerIp, FILTER_VALIDATE_IP)) {
+            json_response(false, 'Invalid network printer IP address format.', null, 422);
+        }
+    }
+
+    $rawPort = $input['printer_port'] ?? '9100';
+    $printerPort = (int)$rawPort;
+    if ($printerPort < 1 || $printerPort > 65535) {
+        json_response(false, 'Printer port must be an integer between 1 and 65535.', null, 422);
+    }
+
+    $paperWidth = validate_enum($input['paper_width'] ?? '58', ['58', '80'], '58');
+
+    $printerSettings = [
+        'printer_ip'   => $printerIp,
+        'printer_port' => (string)$printerPort,
+        'paper_width'  => $paperWidth
+    ];
+
+    try {
+        $db->beginTransaction();
+
+        $upsertStmt = $db->prepare("
+            INSERT INTO settings (setting_key, setting_value) 
+            VALUES (:k, :v)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+        ");
+
+        foreach ($printerSettings as $k => $v) {
+            $upsertStmt->execute([':k' => $k, ':v' => $v]);
+        }
+
+        $db->commit();
+
+        json_response(true, 'Printer configuration saved successfully.', $printerSettings);
+    } catch (\Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('[Printer Settings Update Error] ' . $e->getMessage());
+        json_response(false, 'Database error while saving printer settings: ' . $e->getMessage(), null, 500);
+    }
+}
+
 // Invalid action
-json_response(false, "Unknown action '{$action}'. Valid actions: get, update.", null, 400);
+json_response(false, "Unknown action '{$action}'. Valid actions: get, update, update_printer.", null, 400);

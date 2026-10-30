@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const checkoutTotalDisplay = document.getElementById('checkoutTotalDisplay');
     const checkoutCustName = document.getElementById('checkoutCustName');
     const checkoutCustPhone = document.getElementById('checkoutCustPhone');
+    const checkoutCustNameBadge = document.getElementById('checkoutCustNameBadge');
+    const checkoutCustPhoneBadge = document.getElementById('checkoutCustPhoneBadge');
+    const checkoutCustPhoneHelp = document.getElementById('checkoutCustPhoneHelp');
     const checkoutAdvanceAmount = document.getElementById('checkoutAdvanceAmount');
     const checkoutAdvanceHint = document.getElementById('checkoutAdvanceHint');
     const btnStep1Next = document.getElementById('btnStep1Next');
@@ -469,6 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
         checkoutCustName.value = '';
         checkoutCustPhone.value = '';
         checkoutAdvanceAmount.value = '';
+        checkoutCustName.classList.remove('is-invalid');
+        checkoutCustPhone.classList.remove('is-invalid');
+        checkoutAdvanceAmount.classList.remove('is-invalid');
         updateAdvanceHint();
 
         checkoutModal.show();
@@ -477,36 +483,103 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateAdvanceHint() {
         const advVal = parseFloat(checkoutAdvanceAmount.value);
-        if (isNaN(advVal) || advVal <= 0) {
+        const hasAdvance = !isNaN(advVal) && advVal > 0;
+
+        if (!hasAdvance) {
             checkoutAdvanceHint.innerHTML = `<span class="text-success fw-medium"><i class="bi bi-check-circle"></i> Full payment (Completed Bill)</span>`;
-        } else if (advVal >= cartState.total) {
-            checkoutAdvanceHint.innerHTML = `<span class="text-success fw-medium"><i class="bi bi-check-circle"></i> Full payment of ${formatINR(cartState.total)}</span>`;
+            if (checkoutCustNameBadge) checkoutCustNameBadge.innerHTML = `(Optional)`;
+            if (checkoutCustPhoneBadge) checkoutCustPhoneBadge.innerHTML = `(Optional)`;
+            if (checkoutCustPhoneHelp) {
+                checkoutCustPhoneHelp.className = 'text-muted small mt-1';
+                checkoutCustPhoneHelp.textContent = 'Required if advance amount is entered (pending/credit bill)';
+            }
+            checkoutCustName.removeAttribute('required');
+            checkoutCustPhone.removeAttribute('required');
+            checkoutCustName.classList.remove('is-invalid');
+            checkoutCustPhone.classList.remove('is-invalid');
         } else {
-            const balance = Math.round((cartState.total - advVal) * 100) / 100;
-            checkoutAdvanceHint.innerHTML = `<span class="text-warning-emphasis fw-semibold"><i class="bi bi-clock-history"></i> Pending bill (Balance Due: ${formatINR(balance)})</span>`;
+            if (checkoutCustNameBadge) checkoutCustNameBadge.innerHTML = `<span class="text-danger fw-bold">* (Compulsory)</span>`;
+            if (checkoutCustPhoneBadge) checkoutCustPhoneBadge.innerHTML = `<span class="text-danger fw-bold">* (Compulsory)</span>`;
+            if (checkoutCustPhoneHelp) {
+                checkoutCustPhoneHelp.className = 'text-danger small mt-1 fw-medium';
+                checkoutCustPhoneHelp.innerHTML = `<i class="bi bi-asterisk"></i> Name and contact number are compulsory when advance amount is entered.`;
+            }
+            checkoutCustName.setAttribute('required', 'required');
+            checkoutCustPhone.setAttribute('required', 'required');
+
+            if (advVal > cartState.total) {
+                checkoutAdvanceHint.innerHTML = `<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle"></i> Advance amount cannot exceed bill total (${formatINR(cartState.total)})</span>`;
+            } else if (advVal >= cartState.total) {
+                checkoutAdvanceHint.innerHTML = `<span class="text-success fw-medium"><i class="bi bi-check-circle"></i> Full payment of ${formatINR(cartState.total)}</span>`;
+            } else {
+                const balance = Math.round((cartState.total - advVal) * 100) / 100;
+                checkoutAdvanceHint.innerHTML = `<span class="text-warning-emphasis fw-semibold"><i class="bi bi-clock-history"></i> Pending bill (Balance Due: ${formatINR(balance)})</span>`;
+            }
         }
     }
 
     checkoutAdvanceAmount.addEventListener('input', updateAdvanceHint);
 
+    checkoutCustName.addEventListener('input', () => {
+        if (checkoutCustName.value.trim()) {
+            checkoutCustName.classList.remove('is-invalid');
+            if (checkoutAlertText.textContent.includes('Customer Name')) {
+                hideCheckoutError();
+            }
+        }
+    });
+
+    checkoutCustPhone.addEventListener('input', () => {
+        if (checkoutCustPhone.value.trim()) {
+            checkoutCustPhone.classList.remove('is-invalid');
+            if (checkoutAlertText.textContent.includes('Contact') || checkoutAlertText.textContent.includes('phone')) {
+                hideCheckoutError();
+            }
+        }
+    });
+
     btnStep1Next.addEventListener('click', () => {
         hideCheckoutError();
+        checkoutCustName.classList.remove('is-invalid');
+        checkoutCustPhone.classList.remove('is-invalid');
+        checkoutAdvanceAmount.classList.remove('is-invalid');
 
+        const name = checkoutCustName.value.trim();
         const phone = checkoutCustPhone.value.trim();
-        if (phone && !/^(\+91|91|0)?[6-9]\d{9}$|^[0-9]{7,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''))) {
-            showCheckoutError('Please enter a valid 10-digit customer phone number.');
-            checkoutCustPhone.focus();
-            return;
-        }
-
         const advVal = parseFloat(checkoutAdvanceAmount.value);
-        if (!isNaN(advVal) && advVal > cartState.total) {
+        const hasAdvance = !isNaN(advVal) && advVal > 0;
+
+        if (hasAdvance && advVal > cartState.total) {
+            checkoutAdvanceAmount.classList.add('is-invalid');
             showCheckoutError(`Advance amount cannot exceed the bill total (${formatINR(cartState.total)}).`);
             checkoutAdvanceAmount.focus();
             return;
         }
 
-        if (!isNaN(advVal) && advVal > 0 && advVal < cartState.total) {
+        // When advance amount is entered, Customer Name and Contact are compulsory
+        if (hasAdvance) {
+            if (!name) {
+                checkoutCustName.classList.add('is-invalid');
+                showCheckoutError('Customer Name is compulsory when an advance amount is entered.');
+                checkoutCustName.focus();
+                return;
+            }
+            if (!phone) {
+                checkoutCustPhone.classList.add('is-invalid');
+                showCheckoutError('Customer Contact / Phone number is compulsory when an advance amount is entered.');
+                checkoutCustPhone.focus();
+                return;
+            }
+        }
+
+        if (phone && !/^(\+91|91|0)?[6-9]\d{9}$|^[0-9]{7,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''))) {
+            checkoutCustPhone.classList.add('is-invalid');
+            showCheckoutError('Please enter a valid 10-digit customer phone number.');
+            checkoutCustPhone.focus();
+            return;
+        }
+
+        if (hasAdvance && advVal < cartState.total) {
             checkoutState.amountPayingNow = advVal;
             checkoutState.isAdvance = true;
             checkoutBillTypeBadge.textContent = 'Advance Payment';
@@ -606,6 +679,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const advVal = parseFloat(checkoutAdvanceAmount.value);
+        const hasAdvance = !isNaN(advVal) && advVal > 0;
+        const custName = checkoutCustName.value.trim();
+        const custPhone = checkoutCustPhone.value.trim();
+
+        if (hasAdvance) {
+            if (!custName) {
+                checkoutStep2.classList.add('d-none');
+                checkoutStep1.classList.remove('d-none');
+                checkoutCustName.classList.add('is-invalid');
+                showCheckoutError('Customer Name is compulsory when an advance amount is entered.');
+                checkoutCustName.focus();
+                return;
+            }
+            if (!custPhone) {
+                checkoutStep2.classList.add('d-none');
+                checkoutStep1.classList.remove('d-none');
+                checkoutCustPhone.classList.add('is-invalid');
+                showCheckoutError('Customer Contact / Phone number is compulsory when an advance amount is entered.');
+                checkoutCustPhone.focus();
+                return;
+            }
+        }
+
         const payload = {
             items: cartState.items.map(i => ({
                 product_id: i.product_id,

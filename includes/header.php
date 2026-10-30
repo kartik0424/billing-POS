@@ -91,7 +91,9 @@ $navItems = [
             businessPhone: <?= json_encode($businessPhone) ?>,
             businessGstin: <?= json_encode($businessGstin) ?>,
             receiptFooter: <?= json_encode($receiptFooter) ?>,
-            paperWidth: <?= json_encode($paperWidth) ?>
+            paperWidth: <?= json_encode($paperWidth) ?>,
+            printerIp: <?= json_encode(get_setting('printer_ip', '')) ?>,
+            printerPort: <?= json_encode(get_setting('printer_port', '9100')) ?>
         };
     </script>
 </head>
@@ -107,11 +109,11 @@ $navItems = [
     <div class="container-fluid px-3 px-lg-4">
         <div class="d-flex align-items-center justify-content-between py-2">
             <!-- Brand / Business Title -->
-            <a href="<?= $userRole === 'admin' ? 'audit.php' : 'billing.php' ?>" class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-dark">
-                <span class="brand-icon bg-primary text-white rounded-3 d-inline-flex align-items-center justify-content-center shadow-xs">
+            <a href="<?= $userRole === 'admin' ? 'audit.php' : 'billing.php' ?>" class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-dark me-2 min-w-0">
+                <span class="brand-icon bg-primary text-white rounded-3 d-inline-flex align-items-center justify-content-center shadow-xs flex-shrink-0">
                     <i class="bi bi-cart-check-fill fs-5"></i>
                 </span>
-                <span class="fw-bold fs-5 tracking-tight brand-text"><?= e($businessName) ?></span>
+                <span class="fw-bold fs-6 fs-sm-5 tracking-tight brand-text text-truncate"><?= e($businessName) ?></span>
             </a>
 
             <!-- Desktop Nav Links (Hidden on mobile) -->
@@ -127,49 +129,69 @@ $navItems = [
                 <?php endforeach; ?>
             </nav>
 
-            <!-- Right Controls: Install App, Offline Sync Badge & User Menu -->
-            <div class="d-flex align-items-center gap-2">
+            <!-- Right Controls: Printer Icon, Offline Sync Badge, Install App & User Menu -->
+            <div class="d-flex align-items-center gap-1 gap-sm-2 flex-shrink-0">
+                <!-- Global Printer Setup Button (Icon Only) -->
+                <button type="button" 
+                        class="btn btn-light btn-sm border rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center btn-open-printer-modal nav-printer-btn" 
+                        id="btnHeaderPrinterModal" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#printerConfigModal"
+                        onclick="if (window.PRINTER) window.PRINTER.openModal();"
+                        title="Printer Selection & Setup" 
+                        aria-label="Printer Selection & Setup">
+                    <i class="bi bi-printer text-primary fs-5"></i>
+                </button>
+
                 <!-- Offline Sync Indicator Badge -->
-                <span class="badge bg-warning text-dark rounded-pill small offline-sync-indicator d-none shadow-xs" title="Offline bills awaiting server sync">
-                    <i class="bi bi-cloud-arrow-up me-1"></i> 0 queued
+                <span class="badge bg-warning text-dark rounded-pill small offline-sync-indicator d-none shadow-xs px-2 py-1" title="Offline bills awaiting server sync">
+                    <i class="bi bi-cloud-arrow-up"></i>
+                    <span class="offline-count-num ms-1">0</span>
+                    <span class="d-none d-sm-inline ms-1">queued</span>
                 </span>
 
                 <!-- PWA Install Button (Shown dynamically by pwa.js on beforeinstallprompt) -->
-                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 d-none btn-install-pwa d-flex align-items-center gap-1 shadow-xs">
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-2 px-sm-3 py-1 d-none btn-install-pwa d-inline-flex align-items-center gap-1 shadow-xs" title="Install Web App">
                     <i class="bi bi-download"></i>
-                    <span class="d-none d-sm-inline">Install</span>
+                    <span class="d-none d-sm-inline small fw-medium">Install</span>
                 </button>
 
                 <!-- User Status & Logout Menu -->
                 <div class="dropdown">
-                    <button class="btn btn-light bg-slate-100 border-0 rounded-pill d-flex align-items-center gap-2 py-1 px-3" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="user-avatar rounded-circle bg-primary-subtle text-primary fw-bold d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.85rem;">
-                        <?= strtoupper(substr($userName, 0, 1)) ?>
-                    </span>
-                    <span class="d-none d-sm-inline fw-semibold text-dark small"><?= e($userName) ?></span>
-                    <span class="badge rounded-pill <?= $userRole === 'admin' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary' ?> text-capitalize small">
-                        <?= e($userRole) ?>
-                    </span>
-                    <i class="bi bi-chevron-down text-muted small"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-1 py-1">
-                    <li class="px-3 py-2 border-bottom">
-                        <div class="fw-bold text-dark small"><?= e($userName) ?></div>
-                        <div class="text-muted small">Role: <span class="text-capitalize fw-medium"><?= e($userRole) ?></span></div>
-                    </li>
-                    <?php if ($userRole === 'admin'): ?>
+                    <button class="btn btn-light bg-slate-100 border-0 rounded-pill d-inline-flex align-items-center gap-1 gap-sm-2 py-1 px-1 px-sm-2 pe-sm-3" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= e($userName) ?> (<?= e($userRole) ?>)">
+                        <span class="user-avatar rounded-circle bg-primary-subtle text-primary fw-bold d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                            <?= strtoupper(substr($userName, 0, 1)) ?>
+                        </span>
+                        <span class="d-none d-sm-inline fw-semibold text-dark small text-truncate" style="max-width: 110px;"><?= e($userName) ?></span>
+                        <span class="badge rounded-pill <?= $userRole === 'admin' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary' ?> text-capitalize small d-none d-md-inline">
+                            <?= e($userRole) ?>
+                        </span>
+                        <i class="bi bi-chevron-down text-muted small pe-1"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-1 py-1">
+                        <li class="px-3 py-2 border-bottom">
+                            <div class="fw-bold text-dark small"><?= e($userName) ?></div>
+                            <div class="text-muted small">Role: <span class="text-capitalize fw-medium"><?= e($userRole) ?></span></div>
+                        </li>
                         <li>
-                            <a class="dropdown-item py-2 small d-flex align-items-center gap-2" href="settings.php">
-                                <i class="bi bi-sliders text-muted"></i> System Settings
+                            <a class="dropdown-item py-2 small d-flex align-items-center gap-2 btn-open-printer-modal" href="javascript:void(0);" onclick="if (window.PRINTER) window.PRINTER.openModal();">
+                                <i class="bi bi-printer text-primary"></i> Printer Selection & Setup
                             </a>
                         </li>
-                    <?php endif; ?>
-                    <li>
-                        <a class="dropdown-item py-2 small text-danger d-flex align-items-center gap-2" href="logout.php">
-                            <i class="bi bi-box-arrow-right"></i> Sign Out
-                        </a>
-                    </li>
-                </ul>
+                        <?php if ($userRole === 'admin'): ?>
+                            <li>
+                                <a class="dropdown-item py-2 small d-flex align-items-center gap-2" href="settings.php">
+                                    <i class="bi bi-sliders text-muted"></i> System Settings
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <li>
+                            <a class="dropdown-item py-2 small text-danger d-flex align-items-center gap-2" href="logout.php">
+                                <i class="bi bi-box-arrow-right"></i> Sign Out
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

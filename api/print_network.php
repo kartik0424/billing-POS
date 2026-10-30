@@ -298,7 +298,7 @@ if ($isTest || $billId <= 0) {
 }
 
 // Send Raw ESC/POS Bytes via TCP Socket (fsockopen)
-$connectionTimeout = 3.5; // seconds
+$connectionTimeout = 2.5; // seconds
 $errno = 0;
 $errstr = '';
 

@@ -8,7 +8,7 @@
  * - Navigation / HTML Pages: Network-first with cache fallback, failing to offline.html.
  */
 
-const CACHE_NAME = 'quickpos-cache-v1.0.0';
+const CACHE_NAME = 'quickpos-cache-v1.0.3';
 
 // Essential App Shell resources to precache
 const PRECACHE_ASSETS = [

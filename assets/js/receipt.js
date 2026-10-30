@@ -5,7 +5,7 @@
 
 // Global PRINTER namespace (Part 9 will integrate raw network ESC/POS printer)
 window.PRINTER = window.PRINTER || {
-    print: function(bill, settings) {
+    print: function (bill, settings) {
         // Fallback to native browser print dialog
         window.print();
     }
@@ -44,7 +44,7 @@ function renderReceiptHTML(bill, settings = {}) {
     const address = settings.business_address || settings.address || settings.businessAddress || window.APP?.businessAddress || '';
     const phone = settings.business_phone || settings.phone || settings.businessPhone || window.APP?.businessPhone || '';
     const gstin = settings.business_gstin || settings.gstin || settings.businessGstin || window.APP?.businessGstin || '';
-    const footerMsg = settings.receipt_footer || settings.footer_message || settings.receiptFooter || window.APP?.receiptFooter || 'Thank you for shopping with us! Visit again.';
+    const footerMsg = settings.receipt_footer || settings.footer_message || settings.receiptFooter || window.APP?.receiptFooter || 'Thank you for your visit! Please visit again.';
 
     const items = bill.items || [];
     const hasDiscount = (Number(bill.discount_amount) > 0);
@@ -60,16 +60,16 @@ function renderReceiptHTML(bill, settings = {}) {
         <div class="pos-receipt ${widthClass} text-dark" id="printableThermalReceipt">
             <!-- Header -->
             <div class="receipt-header text-center mb-2">
-                <div class="receipt-title fw-bold text-uppercase fs-6 mb-0">${escapeHTML(businessName)}</div>
-                ${address ? `<div class="receipt-sub small">${escapeHTML(address)}</div>` : ''}
-                ${phone ? `<div class="receipt-sub small">Ph: ${escapeHTML(phone)}</div>` : ''}
-                ${gstin ? `<div class="receipt-sub small fw-semibold">GSTIN: ${escapeHTML(gstin)}</div>` : ''}
+                <div class="receipt-title fw-bold text-uppercase fs-5 mb-1">${escapeHTML(businessName)}</div>
+                ${address ? `<div class="receipt-sub">${escapeHTML(address)}</div>` : ''}
+                ${phone ? `<div class="receipt-sub">Ph: ${escapeHTML(phone)}</div>` : ''}
+                ${gstin ? `<div class="receipt-sub fw-bold">GSTIN: ${escapeHTML(gstin)}</div>` : ''}
             </div>
 
-            <div class="receipt-divider border-top border-dark border-1 my-1"></div>
+            <div class="receipt-divider my-2"></div>
 
             <!-- Metadata Info -->
-            <div class="receipt-meta small my-1">
+            <div class="receipt-meta my-2">
                 <div class="d-flex justify-content-between">
                     <span><strong>Bill:</strong> ${escapeHTML(bill.bill_no)}</span>
                     <span>${formatReceiptDate(bill.created_at)}</span>
@@ -81,21 +81,21 @@ function renderReceiptHTML(bill, settings = {}) {
                 ${bill.customer_phone ? `<div><strong>Phone:</strong> ${escapeHTML(bill.customer_phone)}</div>` : ''}
             </div>
 
-            <div class="receipt-divider border-top border-dark border-1 my-1"></div>
+            <div class="receipt-divider my-2"></div>
 
             <!-- Items Table -->
-            <table class="receipt-table w-100 small my-2">
+            <table class="receipt-table w-100 my-2">
                 <thead>
-                    <tr class="border-bottom border-dark">
+                    <tr class="receipt-table-header">
                         <th class="text-start pb-1">Item</th>
-                        <th class="text-center pb-1" style="width: 30px;">Qty</th>
-                        <th class="text-end pb-1" style="width: 55px;">Rate</th>
-                        <th class="text-end pb-1" style="width: 60px;">Total</th>
+                        <th class="text-center pb-1" style="width: 32px;">Qty</th>
+                        <th class="text-end pb-1" style="width: 58px;">Rate</th>
+                        <th class="text-end pb-1" style="width: 62px;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${items.map(item => `
-                        <tr>
+                        <tr class="receipt-item-row">
                             <td class="text-start py-1 text-break">
                                 ${escapeHTML(item.item_name)}
                                 ${item.is_custom ? '<span class="small font-monospace"> *</span>' : ''}
@@ -108,50 +108,50 @@ function renderReceiptHTML(bill, settings = {}) {
                 </tbody>
             </table>
 
-            <div class="receipt-divider border-top border-dark border-1 my-1"></div>
+            <div class="receipt-divider my-2"></div>
 
             <!-- Summary & Totals -->
-            <div class="receipt-totals small">
+            <div class="receipt-totals">
                 <div class="d-flex justify-content-between py-0">
                     <span>Subtotal</span>
                     <span>₹${Number(bill.subtotal).toFixed(2)}</span>
                 </div>
 
                 ${hasDiscount ? `
-                    <div class="d-flex justify-content-between py-0 text-danger">
+                    <div class="d-flex justify-content-between py-0 receipt-discount-line text-danger">
                         <span>Discount (${bill.discount_type === 'percent' ? Number(bill.discount_value) + '%' : 'Flat'})</span>
                         <span>-₹${Number(bill.discount_amount).toFixed(2)}</span>
                     </div>
                 ` : ''}
 
-                <div class="d-flex justify-content-between py-1 fw-bold fs-6 border-top border-bottom border-dark my-1">
+                <div class="receipt-grand-total d-flex justify-content-between align-items-center py-1 my-1">
                     <span>GRAND TOTAL</span>
                     <span>₹${Number(bill.total).toFixed(2)}</span>
                 </div>
 
                 ${isAdvance ? `
-                    <div class="d-flex justify-content-between py-0 text-success fw-semibold">
+                    <div class="d-flex justify-content-between py-0 receipt-advance-line fw-semibold">
                         <span>Advance Paid</span>
                         <span>₹${Number(bill.advance_paid).toFixed(2)}</span>
                     </div>
-                    <div class="d-flex justify-content-between py-0 text-danger fw-bold fs-6">
+                    <div class="d-flex justify-content-between py-0 receipt-balance-line fw-bold">
                         <span>BALANCE DUE</span>
                         <span>₹${Number(bill.balance_due).toFixed(2)}</span>
                     </div>
                 ` : ''}
 
-                <div class="d-flex justify-content-between py-1 mt-1 small">
+                <div class="d-flex justify-content-between py-1 mt-1 receipt-payment-line">
                     <span class="text-muted">Payment Mode</span>
-                    <span class="fw-semibold">${escapeHTML(paymentModeText)}</span>
+                    <span class="fw-bold text-uppercase">${escapeHTML(paymentModeText)}</span>
                 </div>
             </div>
 
-            <div class="receipt-divider border-top border-dark border-1 my-2"></div>
+            <div class="receipt-divider my-2"></div>
 
             <!-- Footer Greeting -->
-            <div class="receipt-footer text-center small my-2">
-                <div class="fw-semibold mb-1">${escapeHTML(footerMsg)}</div>
-                <div class="text-muted" style="font-size: 0.72rem;">Software Powered by QuickPOS</div>
+            <div class="receipt-footer text-center my-2">
+                <div class="mb-1 receipt-footer-msg">${escapeHTML(footerMsg)}</div>
+                <div class="receipt-footer-sub text-muted">Software Powered by QuickPOS</div>
             </div>
         </div>
     `;

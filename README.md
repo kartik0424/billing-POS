@@ -303,11 +303,12 @@ Follow this systematic testing sequence to verify all POS modules:
 
 ### 5. Advance Payment & Pending Balance Clearance
 - [ ] Add items totaling ₹500 to cart &rarr; Proceed to Checkout.
-- [ ] Enter Customer Name: `Amit Kumar`, Phone: `9876543210`.
-- [ ] Enter Advance Amount: `200.00`.
-- [ ] Select payment method: **UPI**.
+- [ ] Enter Advance Amount: `200.00` while leaving Customer Name and Phone blank &rarr; Click **Next: Payment Mode** &rarr; Verify error prompt "Customer Name is compulsory when an advance amount is entered." and field highlights in red.
+- [ ] Enter Customer Name: `Amit Kumar`, leave Phone blank &rarr; Click **Next: Payment Mode** &rarr; Verify error prompt "Customer Contact / Phone number is compulsory when an advance amount is entered."
+- [ ] Enter valid Phone: `9876543210`.
+- [ ] Click **Next: Payment Mode** &rarr; Select payment method: **UPI**.
 - [ ] Click **Generate Bill** &rarr; Verify bill status is `pending` with `advance_paid = 200` and `balance_due = 300`.
-- [ ] On desktop, check **Pending Bills** (Column 3) or mobile **Pending** tab &rarr; Verify Amit Kumar's card appears with `₹300.00 Due` highlighted in red.
+- [ ] On desktop, check **Pending Bills** (Column 3) or mobile **Pending** tab &rarr; Verify Amit Kumar's card appears with `₹300.00 Due` highlighted in red along with customer name and contact number.
 - [ ] Click **Paid** on the card &rarr; Open **Mark Paid** modal &rarr; Choose **Cash** &rarr; Confirm.
 - [ ] Verify bill disappears from pending list and updates to `completed` with `balance_due = 0`.
 

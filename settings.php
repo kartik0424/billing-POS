@@ -35,21 +35,12 @@ $billPrefix = $currentSettings['bill_prefix'] ?? 'INV-';
 
 <div class="container-fluid px-0" style="max-width: 900px;">
     <!-- Top Action Bar -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <div>
-            <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                <span>System Settings</span>
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill fs-6">Admin</span>
-            </h4>
-            <p class="text-muted small mb-0">Manage business details, receipt formatting, and thermal ESC/POS hardware</p>
-        </div>
-
-        <!-- Quick Hardware Setup Button -->
-        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-2 d-flex align-items-center gap-2 shadow-xs fw-medium btn-open-printer-modal" id="btnOpenPrinterModal">
-            <i class="bi bi-printer"></i>
-            <span>Printer Setup</span>
-            <span class="badge rounded-pill bg-secondary printer-status-badge">Browser</span>
-        </button>
+    <div class="mb-4">
+        <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+            <span>System Settings</span>
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill fs-6">Admin</span>
+        </h4>
+        <p class="text-muted small mb-0">Manage business details, receipt formatting, and thermal ESC/POS hardware</p>
     </div>
 
     <!-- Settings Form -->

@@ -181,7 +181,7 @@
         syncBadges.forEach(el => {
             if (count > 0) {
                 el.classList.remove('d-none');
-                el.innerHTML = `<i class="bi bi-cloud-arrow-up me-1"></i> ${count} bill${count > 1 ? 's' : ''} queued`;
+                el.innerHTML = `<i class="bi bi-cloud-arrow-up me-1"></i> ${count}<span class="d-none d-sm-inline ms-1">bill${count > 1 ? 's' : ''} queued</span>`;
             } else {
                 el.classList.add('d-none');
             }

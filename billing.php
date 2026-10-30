@@ -18,16 +18,9 @@ require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="container-fluid px-0">
-    <!-- Header with Quick Printer Status & Controls -->
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="d-flex align-items-center gap-2">
-            <h5 class="fw-bold mb-0 text-dark d-none d-md-block">POS Terminal</h5>
-        </div>
-        <button type="button" class="btn btn-light btn-sm border rounded-pill px-3 py-1 shadow-xs d-flex align-items-center gap-2 btn-open-printer-modal" id="btnOpenPrinterModal" title="Thermal Printer Setup">
-            <i class="bi bi-printer text-primary"></i>
-            <span class="d-none d-sm-inline small fw-medium">Printer</span>
-            <span class="badge rounded-pill bg-secondary printer-status-badge">Browser</span>
-        </button>
+    <!-- POS Terminal Page Title (Desktop only, mobile uses navbar) -->
+    <div class="d-none d-md-block mb-2">
+        <h5 class="fw-bold mb-0 text-dark">POS Terminal</h5>
     </div>
 
     <!-- Mobile Tab Navigation Bar (Visible only on < lg screens) -->
@@ -290,14 +283,14 @@ require_once __DIR__ . '/includes/header.php';
                     </div>
 
                     <div class="mb-3">
-                        <label for="checkoutCustName" class="form-label small fw-semibold text-secondary mb-1">Customer Name (Optional)</label>
+                        <label for="checkoutCustName" class="form-label small fw-semibold text-secondary mb-1" id="checkoutCustNameLabel">Customer Name <span id="checkoutCustNameBadge" class="text-muted fw-normal">(Optional)</span></label>
                         <input type="text" class="form-control" id="checkoutCustName" placeholder="e.g. Rahul Sharma" maxlength="100">
                     </div>
 
                     <div class="mb-3">
-                        <label for="checkoutCustPhone" class="form-label small fw-semibold text-secondary mb-1">Customer Phone (Optional)</label>
+                        <label for="checkoutCustPhone" class="form-label small fw-semibold text-secondary mb-1" id="checkoutCustPhoneLabel">Customer Contact / Phone <span id="checkoutCustPhoneBadge" class="text-muted fw-normal">(Optional)</span></label>
                         <input type="tel" class="form-control" id="checkoutCustPhone" placeholder="10-digit mobile number" maxlength="15">
-                        <div class="text-muted small mt-1" style="font-size: 0.75rem;">Required if billing as pending/credit</div>
+                        <div class="text-muted small mt-1" id="checkoutCustPhoneHelp" style="font-size: 0.75rem;">Required if advance amount is entered (pending/credit bill)</div>
                     </div>
 
                     <div class="mb-3">

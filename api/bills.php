@@ -119,10 +119,6 @@ switch ($action) {
         $customerName = sanitize_text($data['customer_name'] ?? '');
         $customerPhone = sanitize_text($data['customer_phone'] ?? '');
 
-        if (!empty($customerPhone) && !validate_phone($customerPhone)) {
-            json_response(false, 'Invalid customer phone number. Must be a valid mobile number.', null, 422);
-        }
-
         // 4. Advance & Payment Status Calculation
         $advanceInput = isset($data['advance_amount']) && $data['advance_amount'] !== '' ? sanitize_float($data['advance_amount']) : null;
         
@@ -131,6 +127,20 @@ switch ($action) {
         }
 
         $isAdvanceBill = ($advanceInput !== null && $advanceInput > 0 && $advanceInput < $total);
+
+        // When advance amount is entered, customer name and contact are compulsory so the client can identify the customer
+        if ($advanceInput !== null && $advanceInput > 0) {
+            if (empty($customerName)) {
+                json_response(false, 'Customer name is compulsory when an advance amount is entered.', null, 422);
+            }
+            if (empty($customerPhone)) {
+                json_response(false, 'Customer contact number is compulsory when an advance amount is entered.', null, 422);
+            }
+        }
+
+        if (!empty($customerPhone) && !validate_phone($customerPhone)) {
+            json_response(false, 'Invalid customer phone number. Must be a valid mobile number.', null, 422);
+        }
 
         if ($isAdvanceBill) {
             $status = 'pending';
